@@ -1,0 +1,6 @@
+
+	 * This is a documentation comment (Javadoc).
+ * It can span multiple lines and is used by the 'javadoc' tool
+		 * to generate API documentation.
+ 
+
