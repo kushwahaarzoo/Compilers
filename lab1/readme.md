@@ -1,203 +1,339 @@
-README
-Compiler Lab – LEX Programs
-1. Overview
+# Question 1: Comment Removal using LEX from java code
 
-This repository contains two LEX (FLEX) programs developed as part of the CS321 Compiler Lab:
+This LEX program removes:
+- Single-line comments (`// ...`)
+- Multi-line comments (`/* ... */`)
 
-Java Comment Removal with Documentation Extraction
+and prints only the **actual program code**.
 
-Removes single-line, multi-line, and documentation comments from a Java source file
+## 1. Language / DFA of the Regular Expressions
 
-Produces:
+---
 
-A cleaned .java file (without comments)
+### 1.1 Single-Line Comment
 
-A .txt file containing only documentation comments (/** ... */) in readable form
+**Regex:** `"//".*`
 
-HTML Tag Extraction and Occurrence Counting
+**Language:**
+- All strings that start with `//`
+- Followed by any characters until the end of the line
+- Represents a single-line comment in Java
 
-Reads an HTML file
+**DFA Diagram:**
 
-Extracts all HTML tags
+(q0) -- '/' --> (q1) -- '/' --> (q2)  
+(q2) -- any character except '\n' --> (q2)
 
-Reports the number of occurrences of each tag
+**Action:**
+- Entire comment line is ignored (removed)
 
-Both programs demonstrate lexical analysis using regular expressions and finite automata, which is the first phase of compiler design.
+---
 
-2. System Requirements
+### 1.2 Start of Multi-Line Comment
 
-Operating System:
-UNIX-based system (Ubuntu / WSL / Debian-based Linux)
+**Regex:** `"/*"`
 
-Tools Required:
+**Language:**
+- The exact string `/*`
+- Represents the beginning of a multi-line comment
 
-FLEX (LEX)
+**DFA Diagram:**
 
-GCC Compiler
+(q0) -- '/' --> (q1) -- '*' --> (COMMENT)
 
-Installation
-sudo apt update
-sudo apt install flex gcc
+**Action:**
+- Switch to COMMENT state using `BEGIN(COMMENT)`
 
-3. How to Run the Java Comment Removal Program
-Files Involved
+---
 
-lab_doc_remove.l → LEX source file
+### 1.3 End of Multi-Line Comment
 
-input.java → Java program with comments
+**Regex:** `"*/"`
 
-output.java → Java program after comment removal
+**Language:**
+- The exact string `*/`
+- Represents the end of a multi-line comment
 
-docs.txt → Extracted documentation comments
+**DFA Diagram (COMMENT state):**
 
-Compilation
-lex lab_doc_remove.l
-gcc lex.yy.c -o lab_doc_remove
+(COMMENT) -- '*' --> (q1) -- '/' --> (INITIAL)
 
-Execution
-./lab_doc_remove input.java output.java docs.txt
+**Action:**
+- Exit COMMENT state
+- Return to INITIAL state
 
-Result
+---
 
-output.java contains Java code with all comments removed
+### 1.4 Content Inside Multi-Line Comment
 
-docs.txt contains only documentation comments, formatted for readability
+**Regex:** `.|\n`
 
-4. How to Run the HTML Tag Extraction Program
-Files Involved
+**Language:**
+- All characters including newline
+- Occurring inside a multi-line comment
 
-lab3_q1.l → LEX program
+**DFA Diagram:**
 
-input.html → HTML source file
+(COMMENT) -- any character or '\n' --> (COMMENT)
 
-Compilation
-lex lab3_q1.l
-gcc lex.yy.c -o lab3_q1
+**Action:**
+- Ignore all characters inside multi-line comments
 
-Execution
-./lab3_q1 input.html
+---
 
-Result
+### 1.5 Normal Program Code
 
-Terminal displays each HTML tag and its occurrence count
+**Regex:** `.|\n`
 
-5. Language / DFA of the Regular Expressions
-5.1 Java Comment Removal Program
+**Language:**
+- Any character or newline
+- Outside comment regions
 
-The language recognized by this lexer consists of:
+**DFA Diagram:**
 
-Java comments:
+(INITIAL) -- any character or '\n' --> (INITIAL)
 
-Single-line comments: //.*
+**Action:**
+- Print the character using `printf`
+- This preserves valid program code
 
-Multi-line comments: /* ... */
+---
 
-Documentation comments: /** ... */
+## 2. Logic Behind the Rules
 
-Java source characters excluding comments
+- Single-line comments (`// ...`) are matched and removed immediately.
+- When `/*` is detected, the lexer enters the COMMENT state.
+- All characters inside COMMENT state are ignored.
+- When `*/` is found, the lexer exits COMMENT state.
+- Any character outside comments is printed as valid code.
+- The program effectively strips all comments from source code.
 
-DFA Concept
 
-The lexer operates using multiple start states:
 
-INITIAL → normal Java code
+# Question 2: Counting HTML Tags using LEX
 
-COMMENT → inside /* ... */
+## 1. Language / DFA of the Regular Expressions
 
-DOC → inside /** ... */
+---
 
-Each start condition corresponds to a different DFA, allowing the lexer to correctly distinguish between:
+### 1.1 HTML Tag
 
-code
+**Regex:** `"<html>" | "</html>"`
 
-normal comments
+**Language:**
+- The language consists of the strings `<html>` and `</html>`.
+- These represent the opening and closing HTML tags.
 
-documentation comments
+**DFA Diagram:**
 
-This approach is necessary because regular expressions alone are insufficient for reliably handling multi-line constructs.
+(q0) -- '<' --> (q1) -- 'h' --> (q2) -- 't' --> (q3) -- 'm' --> (q4) -- 'l' --> (q5) -- '>' --> (ACCEPT)
 
-5.2 HTML Tag Extraction Program
+(q0) -- '<' --> (q1) -- '/' --> (q2') -- 'h' --> (q3') -- 't' --> (q4') -- 'm' --> (q5') -- 'l' --> (q6') -- '>' --> (ACCEPT)
 
-The language recognized includes:
+---
 
-Opening tags: <tagname>
+### 1.2 HEAD Tag
 
-Closing tags: </tagname>
+**Regex:** `"<head>" | "</head>"`
 
-Alphanumeric tag names
+**Language:**
+- Contains the strings `<head>` and `</head>`.
+- Represents opening and closing HEAD tags.
 
-Regular expression form:
+**DFA Diagram:**
 
-<[a-zA-Z][a-zA-Z0-9]*
+(q0) -- '<' --> (q1) -- 'h' --> (q2) -- 'e' --> (q3) -- 'a' --> (q4) -- 'd' --> (q5) -- '>' --> (ACCEPT)
 
-</[a-zA-Z][a-zA-Z0-9]*
+(q0) -- '<' --> (q1) -- '/' --> (q2') -- 'h' --> (q3') -- 'e' --> (q4') -- 'a' --> (q5') -- 'd' --> (q6') -- '>' --> (ACCEPT)
 
-DFA Concept
+---
 
-The DFA transitions:
+### 1.3 TITLE Tag
 
-From < to a state expecting a letter
+**Regex:** `"<title>" | "</title>"`
 
-Continues consuming alphanumeric characters
+**Language:**
+- Contains `<title>` and `</title>`.
+- Represents TITLE tags in an HTML document.
 
-Stops at whitespace or >
+**DFA Diagram:**
 
-Each successful path corresponds to recognizing a valid HTML tag.
+(q0) -- '<' --> (q1) -- 't' --> (q2) -- 'i' --> (q3) -- 't' --> (q4) -- 'l' --> (q5) -- 'e' --> (q6) -- '>' --> (ACCEPT)
 
-6. Logic Behind the Rules
-6.1 Java Comment Removal Logic
+(q0) -- '<' --> (q1) -- '/' --> (q2') -- 't' --> (q3') -- 'i' --> (q4') -- 't' --> (q5') -- 'l' --> (q6') -- 'e' --> (q7') -- '>' --> (ACCEPT)
 
-Documentation comments (/** ... */)
+---
 
-Detected first to avoid confusion with normal multi-line comments
+### 1.4 BODY Tag
 
-Contents are written to a .txt file
+**Regex:** `"<body>" | "</body>"`
 
-Multi-line comments (/* ... */)
+**Language:**
+- Contains `<body>` and `</body>`.
+- Represents BODY tags in HTML.
 
-Ignored completely
+**DFA Diagram:**
 
-Single-line comments (// ...)
+(q0) -- '<' --> (q1) -- 'b' --> (q2) -- 'o' --> (q3) -- 'd' --> (q4) -- 'y' --> (q5) -- '>' --> (ACCEPT)
 
-Ignored until newline
+(q0) -- '<' --> (q1) -- '/' --> (q2') -- 'b' --> (q3') -- 'o' --> (q4') -- 'd' --> (q5') -- 'y' --> (q6') -- '>' --> (ACCEPT)
 
-All other characters
+---
 
-Written to the output Java file
+### 1.5 Paragraph Tag
 
-Start conditions ensure the lexer knows its context, which is critical in real compiler design.
+**Regex:** `"<p>" | "</p>"`
 
-6.2 HTML Tag Extraction Logic
+**Language:**
+- Contains `<p>` and `</p>`.
+- Represents paragraph tags in HTML.
 
-When a tag is matched:
+**DFA Diagram:**
 
-The tag name is extracted from yytext
+(q0) -- '<' --> (q1) -- 'p' --> (q2) -- '>' --> (ACCEPT)
 
-A table is searched to check if the tag already exists
+(q0) -- '<' --> (q1) -- '/' --> (q2') -- 'p' --> (q3') -- '>' --> (ACCEPT)
 
-Count is incremented or initialized
+---
 
-Both opening and closing tags are counted
+### 1.6 Other Characters
 
-At the end of input, a summary report is printed
+**Regex:** `.|\n`
 
-This demonstrates token recognition and symbol counting, similar to how identifiers are tracked in compilers.
+**Language:**
+- Contains all characters and newline symbols that are not part of the specified HTML tags.
 
-7. Other Important Aspects
-7.1 Use of yyin
+**DFA Diagram:**
 
-Allows FLEX to read input from files instead of standard input
+(q0) -- any character or '\n' --> (q0)
 
-Essential for real-world compiler tools
+---
 
-7.2 Why Start Conditions Are Used
+## 2. Logic Behind the Rules
 
-Multi-line constructs cannot be safely handled with a single regular expression
+- Each HTML opening and closing tag is matched using regular expressions.
+- When a specific tag is matched, its corresponding counter is incremented.
+- Both opening and closing tags are counted.
+- Characters that are not relevant HTML tags are ignored.
+- After lexical analysis, the total count of each HTML tag is displayed.
 
-Start conditions model context-sensitive scanning, which is common in lexical analyzers
 
-7.3 Relation to Compiler Phases
+# Question 3 : Documentation Comment Extraction using LEX from java code
+## 1. Language / DFA of the Regular Expressions
+### 1.1 Documentation Comment Start
 
-These programs represent the Lexical Analysis Phase
+**Regex:** `"/**"`
 
-Tokens such as comments and tags are identified and processed before syntax analysis
+**Language:**
+- The language contains the exact string `/**`.
+- This marks the beginning of a documentation comment in Java.
+
+**DFA Diagram:**
+
+(q0) -- '/' --> (q1) -- '*' --> (q2) -- '*' --> (DOC)
+
+---
+
+### 1.2 Normal Multi-Line Comment Start
+
+**Regex:** `"/*"`
+
+**Language:**
+- The language contains the exact string `/*`.
+- Represents the start of a normal multi-line comment.
+
+**DFA Diagram:**
+
+(q0) -- '/' --> (q1) -- '*' --> (COMMENT)
+
+---
+
+### 1.3 Single-Line Comment
+
+**Regex:** `"//".*`
+
+**Language:**
+- All strings starting with `//` followed by any characters till the end of the line.
+
+**DFA Diagram:**
+
+(q0) -- '/' --> (q1) -- '/' --> (q2)
+(q2) -- any char except '\n' --> (q2)
+
+---
+
+### 1.4 Documentation Comment End
+
+**Regex:** `"*/"`
+
+**Language:**
+- The exact string `*/`.
+- Marks the end of a documentation comment.
+
+**DFA Diagram (in DOC state):**
+
+(DOC) -- '*' --> (q1) -- '/' --> (INITIAL)
+
+---
+
+### 1.5 Content Inside Documentation Comment
+
+**Regex:** `.|\n`
+
+**Language:**
+- All characters and newline symbols inside documentation comments.
+
+**DFA Diagram:**
+
+(DOC) -- any character or '\n' --> (DOC)
+
+---
+
+### 1.6 End of Normal Multi-Line Comment
+
+**Regex:** `"*/"`
+
+**Language:**
+- The exact string `*/`.
+- Ends a normal multi-line comment.
+
+**DFA Diagram (in COMMENT state):**
+
+(COMMENT) -- '*' --> (q1) -- '/' --> (INITIAL)
+
+---
+
+### 1.7 Content Inside Normal Multi-Line Comment
+
+**Regex:** `.|\n`
+
+**Language:**
+- All characters and newlines inside normal multi-line comments.
+
+**DFA Diagram:**
+
+(COMMENT) -- any character or '\n' --> (COMMENT)
+
+---
+
+### 1.8 Normal Program Code
+
+**Regex:** `.|\n`
+
+**Language:**
+- All characters and newline symbols outside comments.
+
+**DFA Diagram:**
+
+(INITIAL) -- any character or '\n' --> (INITIAL)
+
+---
+
+## 2. Logic Behind the Rules
+
+- Documentation comments (`/** ... */`) are detected and extracted into a separate file.
+- Normal multi-line comments (`/* ... */`) are completely ignored.
+- Single-line comments (`// ...`) are removed.
+- The `DOC` state ensures only documentation comments are processed.
+- The `COMMENT` state ensures normal comments are skipped.
+- All valid Java code outside comments is printed normally.
